@@ -1,0 +1,331 @@
+#!/usr/bin/env python2
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Mar 25 10:40:01 2018
+
+@author: zhouheyu
+"""
+import re
+import datetime
+import time
+import math
+physical_info_arr=[[],[],[]];
+pre_flavor_type_list=[];
+flavor_profit_map={};
+oritime = datetime.datetime(2013,1,1)    
+pre_flavor_type_sum_list=[0 for i in range(24)];
+G_Need_list=[]
+L_Need_list=[]
+H_Need_list=[]
+
+
+limit_type_num = 24
+cpu_consume = [1, 1, 1, 2, 2, 2, 4, 4, 4, 8, 8, 8, 16, 16, 16, 32, 32, 32, 1, 2, 4, 8, 16, 32]
+mem_consume = [1, 2, 4, 2, 4, 8, 4, 8, 16, 8, 16, 32, 16, 32, 64, 32, 64, 128, 8, 16, 32, 64, 128, 256]
+price = []
+H_must_list = []
+L_must_list = []
+
+
+def selectTypeForPhysical():
+    global H_must_list
+    global L_must_list
+    for index in range(limit_type_num):
+        if cpu_consume[index] >= 16 and cpu_consume[index] == mem_consume[index]:
+            H_must_list.append(index + 1)
+        elif mem_consume[index] >= 32 and (mem_consume[index] / cpu_consume[index]) >= 4:
+            L_must_list.append(index + 1)
+    return H_must_list, L_must_list
+
+#source limit
+
+
+# get info from input.txt
+def get_Input_Info(input_lines):
+    map_dict={'G':0,'L':1,'H':2};
+    physical_info_num=int(input_lines[0].strip());
+    global physical_info_arr
+    for i in range(physical_info_num):
+        row=input_lines[i+1].strip();
+        temp=row.split(' ');
+        physical_flag=temp[0][0]
+        arr_offset=map_dict[physical_flag]
+        cpu_max=int(temp[1])
+        mem_max=int(temp[2])
+        money=float(temp[4])
+        physical_info_arr[arr_offset]=[physical_flag,cpu_max,mem_max,money]
+ 
+    flavor_info_num=int(input_lines[physical_info_num+2])
+    read_offset=physical_info_num+3;
+    global pre_flavor_type_list
+    global flavor_profit_map
+    for i in range(flavor_info_num):
+        row=input_lines[read_offset+i].strip()
+        temp=row.split(' ')
+        flavor_type=int(temp[0][6:])
+        flavor_profit=float(temp[3])
+        flavor_profit_map[flavor_type]=flavor_profit;
+        pre_flavor_type_list.append(flavor_type)
+        
+    read_offset=physical_info_num+flavor_info_num+4;
+    start_date=input_lines[read_offset].strip()
+    end_date=input_lines[read_offset+1].strip()
+    
+    temp1 = time.strptime(start_date,'%Y-%m-%d %H:%M:%S')
+    temp2 = time.strptime(end_date, '%Y-%m-%d %H:%M:%S')
+    start_time = datetime.datetime(temp1[0],temp1[1],temp1[2])
+    end_time = datetime.datetime(temp2[0],temp2[1],temp2[2])
+    
+    return start_time,end_time
+
+# get info  from testdata.txt
+def get_test_Info(start,end,need_type,test_lines):
+    flavor_type_need={}
+    for i in need_type:
+        if not flavor_type_need.has_key(i):
+            flavor_type_need[i]=0
+#    ======================================================
+    ori = []
+    for item in test_lines:
+        values = item.split("\t")
+        uuid = values[0]
+        flavorName = values[1]
+        createTime = values[2].strip()
+       
+        temp = time.strptime(createTime, '%Y-%m-%d %H:%M:%S')
+        
+        #ADD HOUR
+#        nowtime = datetime.datetime(temp[0],temp[1],temp[2])
+        nowtime = datetime.datetime(temp[0],temp[1],temp[2])
+       
+        uusub=re.split('-',uuid);
+        
+        if int(flavorName[6:])  in need_type:
+            ori.append([uusub[1][0],int(flavorName[6:]),(nowtime-oritime).days,temp[1]])
+    
+    start_day=(start-oritime).days
+    end_day=(end-oritime).days
+    for row in ori:
+        if row[2]>=start_day and row[2]<=end_day:
+            flavor_type_need[row[1]]+=1
+            
+    
+    return flavor_type_need
+
+
+
+def get_Result_Info(predict_line,limit_num):
+    all_line_num=len(predict_line)
+    all_pre_num=int(predict_line[0].strip())
+    global pre_flavor_type_sum_list
+    for i in range(1,limit_num+1):
+        values=predict_line[i].split()
+        flavorName=values[0]
+        Type=int(flavorName[6:])
+        pre_flavor_type_sum_list[Type-1]=int(values[1])
+        
+        
+    global G_Need_list,H_Need_list,L_Need_list
+    read_offset=2+limit_num
+    row=predict_line[read_offset].split(' ')
+    physical_flag=row[0][0]
+    physical_num=int(row[1])
+    read_offset=2+limit_num+1;
+    Need_list=list()
+    for i in range(physical_num):
+        row=predict_line[read_offset+i].strip();
+        temp=row.split(' ')
+        L=len(temp)
+        temp_arr=[0 for i in range(24)]
+        for i in range(1,L,2):
+            flavor_type=int(temp[i][6:])
+            pre_num=int(temp[i+1])
+            temp_arr[flavor_type-1]=pre_num
+        Need_list.append(temp_arr)
+    if physical_flag=='G':
+        G_Need_list=Need_list
+    elif physical_flag=='H':
+        H_Need_list=Need_list
+    elif physical_flag=='L':
+        L_Need_list=Need_list
+    
+    read_offset+=physical_num
+    if(read_offset<all_line_num):
+        read_offset+=1
+        row=predict_line[read_offset].split(' ')
+        physical_flag=row[0][0]
+        physical_num=int(row[1])
+        read_offset+=1
+        Need_list=list()
+        for i in range(physical_num):
+            row=predict_line[read_offset+i].strip();
+            temp=row.split(' ')
+            L=len(temp)
+            temp_arr=[0 for i in range(24)]
+            for i in range(1,L,2):
+                flavor_type=int(temp[i][6:])
+                pre_num=int(temp[i+1])
+                temp_arr[flavor_type-1]=pre_num
+            Need_list.append(temp_arr)
+            if physical_flag=='G':
+                G_Need_list=Need_list
+            elif physical_flag=='H':
+                H_Need_list=Need_list
+            elif physical_flag=='L':
+                L_Need_list=Need_list 
+        
+    read_offset+=physical_num
+    if(read_offset<all_line_num):
+        read_offset+=1
+        row=predict_line[read_offset].split(' ')
+        physical_flag=row[0][0]
+        physical_num=int(row[1])
+        read_offset+=1
+        Need_list=list()
+        for i in range(physical_num):
+            row=predict_line[read_offset+i].strip();
+            temp=row.split(' ')
+            L=len(temp)
+            temp_arr=[0 for i in range(24)]
+            for i in range(1,L,2):
+                flavor_type=int(temp[i][6:])
+                pre_num=int(temp[i+1])
+                temp_arr[flavor_type-1]=pre_num
+            Need_list.append(temp_arr)
+            if physical_flag=='G':
+                G_Need_list=Need_list
+            elif physical_flag=='H':
+                H_Need_list=Need_list
+            elif physical_flag=='L':
+                L_Need_list=Need_list 
+    
+    return all_pre_num
+    
+
+def get_pre_score(pre_data,real_data,limit_num):
+    score=0.0
+    Sum=0
+    real_sum=0
+    pre_sum=0
+    for k,v in real_data.items():
+        temp=math.pow(pre_data[k]-v,2)
+        Sum+=temp
+    for k,v in real_data.items():
+        real_sum+=math.pow(v,2)
+    for k,v in pre_data.items():
+        pre_sum+=math.pow(v,2)
+        
+    FenMu=math.sqrt(Sum*1.0/limit_num)
+    FenZi=math.sqrt(pre_sum*1.0/limit_num)+math.sqrt(real_sum*1.0/limit_num)
+    if FenZi==0:
+        score=1
+    else:
+        score=1-(FenMu/FenZi)
+    
+    return score
+
+def source_limit():
+    G_num,L_num,H_num=len(G_Need_list),len(L_Need_list),len(H_Need_list)
+    if(G_num>0):
+        cpu_max=physical_info_arr[0][1]
+        mem_max=physical_info_arr[0][2]
+        physical_cost=physical_info_arr[0][3]*10000
+        for i in range(G_num):
+            all_cpu_cost=0;
+            all_mem_cost=0;
+            row=G_Need_list[i]
+            for index,value in enumerate(row):
+                if value>0:
+                    all_cpu_cost+=value*cpu_consume[index]
+                    all_mem_cost+=value*mem_consume[index]
+            if all_cpu_cost>cpu_max or all_mem_cost>mem_max:
+                print 'G %d source is over cpu_max is %d ,cost cpu is %d'%(i,cpu_max,all_cpu_cost)
+                print 'G %d source is  over mem_max is %d ,cost_mem is %d'%(i,mem_max,all_mem_cost)
+            else:
+                print 'G %d source is success'%(i)
+                print 'cpu_max is %d,remain_cpu is %d'%(cpu_max,cpu_max-all_cpu_cost)
+                print 'mem_max is %d,remain_mem is %d'%(mem_max,mem_max-all_mem_cost)
+    if(L_num>0):
+        cpu_max=physical_info_arr[1][1]
+        mem_max=physical_info_arr[1][2]
+        physical_cost=physical_info_arr[1][3]*10000
+        for i in range(L_num):
+            all_cpu_cost=0;
+            all_mem_cost=0;
+            row=L_Need_list[i]
+            for index,value in enumerate(row):
+                if value>0:
+                    all_cpu_cost+=value*cpu_consume[index]
+                    all_mem_cost+=value*mem_consume[index]
+            if all_cpu_cost>cpu_max or all_mem_cost>mem_max:
+                print 'L %d source is over cpu_max is %d ,cost cpu is %d'%(i,cpu_max,all_cpu_cost)
+                print 'L %d source is  over mem_max is %d ,cost_mem is %d'%(i,mem_max,all_mem_cost)
+            else:
+                print 'L %d source is success'%(i)
+                print 'cpu_max is %d,remain_cpu is %d'%(cpu_max,cpu_max-all_cpu_cost)
+                print 'mem_max is %d,remain_mem is %d'%(mem_max,mem_max-all_mem_cost)
+    
+    if(H_num>0):
+        cpu_max=physical_info_arr[2][1]
+        mem_max=physical_info_arr[2][2]
+        physical_cost=physical_info_arr[2][3]*10000
+        for i in range(H_num):
+            all_cpu_cost=0;
+            all_mem_cost=0;
+            row=H_Need_list[i]
+            for index,value in enumerate(row):
+                if value>0:
+                    all_cpu_cost+=value*cpu_consume[index]
+                    all_mem_cost+=value*mem_consume[index]
+            if all_cpu_cost>cpu_max or all_mem_cost>mem_max:
+                print 'H %d source is over cpu_max is %d ,cost cpu is %d'%(i,cpu_max,all_cpu_cost)
+                print 'H %d source is  over mem_max is %d ,cost_mem is %d'%(i,mem_max,all_mem_cost)
+            else:
+                print 'H %d source is success'%(i)   
+                print 'cpu_max is %d,remain_cpu is %d'%(cpu_max,cpu_max-all_cpu_cost)
+                print 'mem_max is %d,remain_mem is %d'%(mem_max,mem_max-all_mem_cost)
+    
+    
+    return 1
+
+
+def getScore(predict_lines,input_lines,test_lines):
+#    Score=0.0
+    if predict_lines is None:
+        print 'predcit_lines information is none'
+        return None
+    if input_lines is None:
+        print 'input file information is none'
+        return None  
+    if test_lines is None:
+        print 'test file information is none'
+    
+    #   read input file to get predict date time and predict flavortype
+    start_time,end_time=get_Input_Info(input_lines)
+    #    static real need num from test_file
+    read_flavor_type_need=get_test_Info(start_time,end_time,pre_flavor_type_list,test_lines)
+    limit_num=len(pre_flavor_type_list)
+    all_pre_num=get_Result_Info(predict_lines,limit_num)
+    selectTypeForPhysical()
+#    check source limit
+    source_limit()
+    
+    
+#    print 'G_Need_list'
+#    print G_Need_list
+#    print 'L_Need_list'
+#    print L_Need_list
+#    print 'H_Need_list'
+#    print H_Need_list
+#    print physical_info_arr
+#    print H_must_list
+#    print L_must_list
+#    
+    
+    
+#    predict_rate=get_pre_score(pre_flavor_type,real_flavor_type,flavor_type_num)
+    
+    print all_pre_num
+
+    
+    return 1

@@ -1,0 +1,8 @@
+0
+flavor1 0
+flavor2 0
+flavor3 0
+flavor4 0
+flavor5 0
+
+0

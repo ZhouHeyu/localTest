@@ -225,7 +225,6 @@ def get_pre_score(pre_data,real_data,limit_num):
     return score
 
 def source_limit():
-    play_flavor_num=[0 for i in range(24)]
     G_num,L_num,H_num=len(G_Need_list),len(L_Need_list),len(H_Need_list)
     if(G_num>0):
         cpu_max=physical_info_arr[0][1]
@@ -237,7 +236,6 @@ def source_limit():
             row=G_Need_list[i]
             for index,value in enumerate(row):
                 if value>0:
-                    play_flavor_num[index]+=value;
                     all_cpu_cost+=value*cpu_consume[index]
                     all_mem_cost+=value*mem_consume[index]
             if all_cpu_cost>cpu_max or all_mem_cost>mem_max:
@@ -257,7 +255,6 @@ def source_limit():
             row=L_Need_list[i]
             for index,value in enumerate(row):
                 if value>0:
-                    play_flavor_num[index]+=value
                     all_cpu_cost+=value*cpu_consume[index]
                     all_mem_cost+=value*mem_consume[index]
             if all_cpu_cost>cpu_max or all_mem_cost>mem_max:
@@ -278,7 +275,6 @@ def source_limit():
             row=H_Need_list[i]
             for index,value in enumerate(row):
                 if value>0:
-                    play_flavor_num[index]+=value
                     all_cpu_cost+=value*cpu_consume[index]
                     all_mem_cost+=value*mem_consume[index]
             if all_cpu_cost>cpu_max or all_mem_cost>mem_max:
@@ -290,7 +286,7 @@ def source_limit():
                 print 'mem_max is %d,remain_mem is %d'%(mem_max,mem_max-all_mem_cost)
     
     
-    return play_flavor_num
+    return 1
 
 
 def getScore(predict_lines,input_lines,test_lines):
@@ -311,20 +307,9 @@ def getScore(predict_lines,input_lines,test_lines):
     limit_num=len(pre_flavor_type_list)
     all_pre_num=get_Result_Info(predict_lines,limit_num)
     selectTypeForPhysical()
-    # print H_must_list
-    # print L_must_list
 #    check source limit
-    play_flavor_num=source_limit()
-    pre_flavor_type_sum_list
-    for index,value in enumerate(pre_flavor_type_sum_list):
-        if(play_flavor_num[index]!=value):
-            print "error equal"
-            print "flovar_type %d: play is %d,pre is %d:"%(index+1,play_flavor_num[index],value)
-        else:
-            continue
-            # print "play num success"
-            # print "flovar_type %d: play is %d,pre is %d:"%(index+1,play_flavor_num[index],value)
-
+    source_limit()
+    
     
 #    print 'G_Need_list'
 #    print G_Need_list
@@ -333,7 +318,8 @@ def getScore(predict_lines,input_lines,test_lines):
 #    print 'H_Need_list'
 #    print H_Need_list
 #    print physical_info_arr
-
+    print H_must_list
+    print L_must_list
 #    
     
     
